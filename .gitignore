@@ -1,0 +1,17 @@
+# OpenClaw 本地配置和工作区文件，不要推送到GitHub
+.clawhub/
+.openclaw/
+AGENTS.md
+HEARTBEAT.md
+SOUL.md
+TOOLS.md
+IDENTITY.md
+USER.md
+agent2-status.md
+novel-agent3-checklist.md
+novel-style-analysis.md
+*status.md
+*analysis.md
+*.log
+
+# 只推成品小说，保留 *.md 但排除临时文件
