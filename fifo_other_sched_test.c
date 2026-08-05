@@ -36,7 +36,7 @@ static void *test_fifo_thread(void *arg)
 
     /* set CPU affinity: core 0 only */
     CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset);
+    CPU_SET(20, &cpuset);
     if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) != 0) {
         perror("[FIFO] pthread_setaffinity_np");
         return NULL;
@@ -52,7 +52,7 @@ static void *test_fifo_thread(void *arg)
 
     /* verify actually running on core 0 (scheduler may have hysteresis) */
     int core = sched_getcpu();
-    printf("[FIFO] started  priority=%d  affinity_set=0  actual_core=%d\n",
+    printf("[FIFO] started  priority=%d  affinity_set=20  actual_core=%d\n",
            param.sched_priority, core);
 
     /* signal that TEST_FIFO is initialised and on core 0 */
@@ -99,7 +99,7 @@ static void *test_other_thread(void *arg)
 
     /* set CPU affinity: core 0 only */
     CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset);
+    CPU_SET(20, &cpuset);
     if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) != 0) {
         perror("[OTHER] pthread_setaffinity_np");
         return NULL;
@@ -111,7 +111,7 @@ static void *test_other_thread(void *arg)
         perror("[OTHER] pthread_getschedparam");
     } else {
         int core = sched_getcpu();
-        printf("[OTHER] started  policy=%d (SCHED_OTHER=%d)  affinity_set=0  actual_core=%d\n",
+        printf("[OTHER] started  policy=%d (SCHED_OTHER=%d)  affinity_set=20  actual_core=%d\n",
                policy, SCHED_OTHER, core);
     }
 
@@ -183,7 +183,7 @@ int main(void)
     pthread_t t_fifo, t_other, t_reporter;
 
     printf("=== FIFO vs OTHER scheduling test ===\n");
-    printf("Both threads pinned to CPU 0\n");
+    printf("Both threads pinned to CPU 20\n");
     printf("FIFO:  SCHED_FIFO max priority, 100us sleep every 1000ms, compute rest\n");
     printf("OTHER: SCHED_OTHER, wakes every 1ms\n");
     printf("Watch OTHER_sched_count: ratio near 10%% => OTHER gets ~10%% CPU time;\n");
