@@ -52,7 +52,7 @@ static void *worker_thread(void *arg)
         sched_yield();
 
     int core = sched_getcpu();
-    printf("[T%d] started  priority=%d  affinity=%d  actual_core=%d\n",
+    printf("[FIFO_T%d] started  priority=%d  affinity=%d  actual_core=%d\n",
            a->id, a->priority, TARGET_CPU, core);
 
     /* signal that this thread is up and running */
@@ -89,7 +89,7 @@ static void *worker_thread(void *arg)
         atomic_fetch_add(a->sched_count, 1);
     }
 
-    printf("[T%d] exiting\n", a->id);
+    printf("[FIFO_T%d] exiting\n", a->id);
     return NULL;
 }
 
@@ -122,11 +122,11 @@ static void *reporter_thread(void *arg)
 
         printf("[STAT]  total=%-6lld", (long long)total);
         for (int i = 0; i < n; i++)
-            printf("  T%d=%-5d", i, snap[i]);
+            printf("  FIFO_T%d=%-5d", i, snap[i]);
         if (total > 0) {
             printf("  |");
             for (int i = 0; i < n; i++)
-                printf("  T%d=%.1f%%", i, snap[i] * 100.0 / total);
+                printf("  FIFO_T%d=%.1f%%", i, snap[i] * 100.0 / total);
         }
         printf("\n");
 
@@ -149,7 +149,7 @@ static void create_fifo_threads(pthread_t *threads, thread_arg_t *args,
         args[i].id          = i;
         args[i].priority    = (step == 0) ? base_priority : base_priority - i * step;
         args[i].sched_count = &counters[i];
-        snprintf(args[i].name, sizeof(args[i].name), "T%d", i);
+        snprintf(args[i].name, sizeof(args[i].name), "FIFO_T%d", i);
 
         pthread_create(&threads[i], NULL, worker_thread, &args[i]);
         pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &cpuset);
@@ -190,7 +190,7 @@ static void run_test_same_priority(int n)
     pthread_create(&reporter, NULL, reporter_thread, &rep_ctx);
 
     while (atomic_load(&test_ready) < n) sched_yield();
-    printf("[READY] T0..T%d confirmed on CPU %d, stats starting\n\n", n - 1, TARGET_CPU);
+    printf("[READY] FIFO_T0..FIFO_T%d confirmed on CPU %d, stats starting\n\n", n - 1, TARGET_CPU);
 
     sleep(DEFAULT_TEST_DURATION);
     keep_running = 0;
@@ -211,7 +211,7 @@ static void run_test_different_priority(int n)
     printf("\n");
     printf("========================================================\n");
     printf("Test 2: %d x SCHED_FIFO, DIFFERENT priorities\n", n);
-    printf("T0=P%d (highest) .. T%d=P%d (lowest), step=%d\n",
+    printf("FIFO_T0=P%d (highest) .. FIFO_T%d=P%d (lowest), step=%d\n",
            max_prio, n - 1, min_prio, step);
     printf("All pinned to CPU %d, each sleeps %dus every %dus\n",
            TARGET_CPU, DEFAULT_SLEEP_US, DEFAULT_CYCLE_US);
@@ -229,7 +229,7 @@ static void run_test_different_priority(int n)
     pthread_create(&reporter, NULL, reporter_thread, &rep_ctx);
 
     while (atomic_load(&test_ready) < n) sched_yield();
-    printf("[READY] T0..T%d confirmed on CPU %d, stats starting\n\n", n - 1, TARGET_CPU);
+    printf("[READY] FIFO_T0..FIFO_T%d confirmed on CPU %d, stats starting\n\n", n - 1, TARGET_CPU);
 
     sleep(DEFAULT_TEST_DURATION);
     keep_running = 0;
