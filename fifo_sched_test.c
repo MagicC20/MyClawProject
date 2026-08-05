@@ -151,6 +151,13 @@ static void create_fifo_threads(pthread_t *threads, thread_arg_t *args,
         args[i].id          = i;
         args[i].priority    = (step == 0) ? base_priority : base_priority - i * step;
         args[i].sched_count = &counters[i];
+        if (step == 0) {
+            snprintf(args[i].name, sizeof(args[i].name),
+                     "FIFO_SAME_P%d", base_priority);
+        } else {
+            snprintf(args[i].name, sizeof(args[i].name),
+                     "FIFO_P%d", args[i].priority);
+        }
 
         pthread_create(&threads[i], NULL, worker_thread, &args[i]);
 
@@ -165,16 +172,11 @@ static void create_fifo_threads(pthread_t *threads, thread_arg_t *args,
     }
 }
 
-/* ── set thread names from main ─────────────────────── */
-static void set_thread_names(pthread_t *threads, thread_arg_t *args, int n)
+/* ── set pthread name from main (uses pthread_setname_np) ─ */
+static void apply_pthread_setname(pthread_t *threads, thread_arg_t *args, int n)
 {
-    for (int i = 0; i < n; i++) {
-        if (args[i].name[0] != '\0')
-            continue; /* already named (e.g. from different priority step) */
-
-        snprintf(args[i].name, sizeof(args[i].name), "FIFO_P%d", args[i].priority);
+    for (int i = 0; i < n; i++)
         pthread_setname_np(threads[i], args[i].name);
-    }
 }
 
 /* ── Test 1: same priority ───────────────────────────── */
@@ -196,10 +198,8 @@ static void run_test_same_priority(int n, pthread_t *out_threads,
     create_fifo_threads(threads, args, counters, n,
                         sched_get_priority_max(SCHED_FIFO), 0);
 
-    /* set thread names from main */
-    for (int i = 0; i < n; i++)
-        snprintf(args[i].name, sizeof(args[i].name), "FIFO_P%d", args[i].priority);
-    set_thread_names(threads, args, n);
+    /* name already set inside create_fifo_threads; apply via pthread_setname_np */
+    apply_pthread_setname(threads, args, n);
 
     pthread_t reporter;
     pthread_create(&reporter, NULL, reporter_thread, counters);
@@ -246,8 +246,8 @@ static void run_test_different_priority(int n, pthread_t *out_threads,
 
     create_fifo_threads(threads, args, counters, n, max_prio, step);
 
-    /* set thread names from main */
-    set_thread_names(threads, args, n);
+    /* name already set inside create_fifo_threads; apply via pthread_setname_np */
+    apply_pthread_setname(threads, args, n);
 
     pthread_t reporter;
     pthread_create(&reporter, NULL, reporter_thread, counters);
