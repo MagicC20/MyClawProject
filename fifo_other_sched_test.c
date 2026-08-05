@@ -110,19 +110,23 @@ static void *test_other_thread(void *arg)
 
     /*
      * Pattern: wake every 1 ms, count one schedule hit.
+     * Re对齐 to next 1ms boundary based on ACTUAL current time,
+     * not the intended wake time (which may have passed due to FIFO delay).
      */
-    struct timespec next_wake;
-    clock_gettime(CLOCK_MONOTONIC, &next_wake);
+    struct timespec now;
 
     while (keep_running) {
         /* increment counter whenever this thread gets scheduled in */
         atomic_fetch_add(&other_sched_count, 1);
 
-        /* advance to next 1 ms boundary */
-        next_wake.tv_nsec += NSEC_PER_MSEC;
+        /* calculate next 1 ms boundary from actual current time */
+        struct timespec next_wake;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        next_wake.tv_sec = now.tv_sec;
+        next_wake.tv_nsec = ((now.tv_nsec / NSEC_PER_MSEC) + 1) * NSEC_PER_MSEC;
         if (next_wake.tv_nsec >= NSEC_PER_SEC) {
-            next_wake.tv_sec += next_wake.tv_nsec / NSEC_PER_SEC;
-            next_wake.tv_nsec %= NSEC_PER_SEC;
+            next_wake.tv_sec++;
+            next_wake.tv_nsec -= NSEC_PER_SEC;
         }
 
         /* sleep until next 1 ms tick */
