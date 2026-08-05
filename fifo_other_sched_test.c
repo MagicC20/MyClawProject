@@ -48,6 +48,7 @@ static void *test_fifo_thread(void *arg)
         return NULL;
     }
 
+    pthread_setname_np(pthread_self(), "TEST_FIFO");
     printf("[FIFO] started  priority=%d  on core %d\n",
            param.sched_priority, sched_getcpu());
 
@@ -104,6 +105,7 @@ static void *test_other_thread(void *arg)
     if (pthread_getschedparam(pthread_self(), &policy, &param) != 0) {
         perror("[OTHER] pthread_getschedparam");
     } else {
+        pthread_setname_np(pthread_self(), "TEST_OTHER");
         printf("[OTHER] started  policy=%d (SCHED_OTHER=%d) on core %d\n",
                policy, SCHED_OTHER, sched_getcpu());
     }
