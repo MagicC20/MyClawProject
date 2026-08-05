@@ -50,9 +50,10 @@ static void *test_fifo_thread(void *arg)
         return NULL;
     }
 
-    pthread_setname_np(pthread_self(), "TEST_FIFO");
-    printf("[FIFO] started  priority=%d  on core %d\n",
-           param.sched_priority, sched_getcpu());
+    /* verify actually running on core 0 (scheduler may have hysteresis) */
+    int core = sched_getcpu();
+    printf("[FIFO] started  priority=%d  affinity_set=0  actual_core=%d\n",
+           param.sched_priority, core);
 
     /* signal that TEST_FIFO is initialised and on core 0 */
     atomic_store(&fifo_ready, 1);
@@ -109,9 +110,9 @@ static void *test_other_thread(void *arg)
     if (pthread_getschedparam(pthread_self(), &policy, &param) != 0) {
         perror("[OTHER] pthread_getschedparam");
     } else {
-        pthread_setname_np(pthread_self(), "TEST_OTHER");
-        printf("[OTHER] started  policy=%d (SCHED_OTHER=%d) on core %d\n",
-               policy, SCHED_OTHER, sched_getcpu());
+        int core = sched_getcpu();
+        printf("[OTHER] started  policy=%d (SCHED_OTHER=%d)  affinity_set=0  actual_core=%d\n",
+               policy, SCHED_OTHER, core);
     }
 
     /* signal that TEST_OTHER is initialised and on core 0 */
@@ -191,6 +192,10 @@ int main(void)
     pthread_create(&t_fifo,     NULL, test_fifo_thread,   NULL);
     pthread_create(&t_other,    NULL, test_other_thread,  NULL);
     pthread_create(&t_reporter, NULL, reporter_thread,    NULL);
+
+    /* set thread names in main after pthread_create */
+    pthread_setname_np(t_fifo,  "TEST_FIFO");
+    pthread_setname_np(t_other, "TEST_OTHER");
 
     /* run for 30 seconds */
     sleep(30);
