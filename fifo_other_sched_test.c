@@ -21,11 +21,13 @@
 #define NSEC_PER_MSEC 1000000L
 #define NSEC_PER_USEC 1000L
 
-/* ── shared counter ──────────────────────────────────── */
+/* ── shared counter & sync flags ─────────────────────── */
 static atomic_int other_sched_count = ATOMIC_VAR_INIT(0);
 static volatile int keep_running = 1;
+static atomic_int fifo_ready  = ATOMIC_VAR_INIT(0);
+static atomic_int other_ready = ATOMIC_VAR_INIT(0);
 
-/* ── TEST_FIFO thread ────────────────────────────────── */
+/* ── TEST_FIFO thread ───────────────────────────────── */
 static void *test_fifo_thread(void *arg)
 {
     (void)arg;
@@ -52,13 +54,15 @@ static void *test_fifo_thread(void *arg)
     printf("[FIFO] started  priority=%d  on core %d\n",
            param.sched_priority, sched_getcpu());
 
+    /* signal that TEST_FIFO is initialised and on core 0 */
+    atomic_store(&fifo_ready, 1);
+
     /*
      * Work pattern: every 1000ms sleep 100us, rest (999.9ms) do computation.
-     * Simulate computation with busy-wait using clock_gettime.
      */
     struct timespec ts_start, ts_now;
-    long sleep_interval_ns = 100 * NSEC_PER_USEC;    /* 100us */
-    long cycle_ns = 1000 * NSEC_PER_MSEC;             /* 1000ms */
+    long sleep_interval_ns = 100 * NSEC_PER_USEC;
+    long cycle_ns = 1000 * NSEC_PER_MSEC;
 
     while (keep_running) {
         clock_gettime(CLOCK_MONOTONIC, &ts_start);
@@ -110,9 +114,12 @@ static void *test_other_thread(void *arg)
                policy, SCHED_OTHER, sched_getcpu());
     }
 
+    /* signal that TEST_OTHER is initialised and on core 0 */
+    atomic_store(&other_ready, 1);
+
     /*
      * Pattern: wake every 1 ms, count one schedule hit.
-     * Re对齐 to next 1ms boundary based on ACTUAL current time,
+     * Re-align to next 1ms boundary based on ACTUAL current time,
      * not the intended wake time (which may have passed due to FIFO delay).
      */
     struct timespec now;
@@ -143,6 +150,13 @@ static void *test_other_thread(void *arg)
 static void *reporter_thread(void *arg)
 {
     (void)arg;
+
+    /* wait until both TEST_FIFO and TEST_OTHER are confirmed on core 0 */
+    while (!atomic_load(&fifo_ready) || !atomic_load(&other_ready)) {
+        sched_yield();
+    }
+    printf("[REPORTER] both threads confirmed on core 0, starting stats\n\n");
+
     time_t next_sec;
     time(&next_sec);
     next_sec++;
