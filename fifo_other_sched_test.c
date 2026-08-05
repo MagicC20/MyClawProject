@@ -52,7 +52,7 @@ static void *test_fifo_thread(void *arg)
 
     /* verify actually running on core 0 (scheduler may have hysteresis) */
     int core = sched_getcpu();
-    printf("[FIFO] started  priority=%d  affinity_set=20  actual_core=%d\n",
+    printf("[T0] started  priority=%d  affinity=20  actual_core=%d\n",
            param.sched_priority, core);
 
     /* signal that TEST_FIFO is initialised and on core 0 */
@@ -85,7 +85,7 @@ static void *test_fifo_thread(void *arg)
         }
     }
 
-    printf("[FIFO] exiting\n");
+    printf("[T0] exiting\n");
     return NULL;
 }
 
@@ -111,7 +111,7 @@ static void *test_other_thread(void *arg)
         perror("[OTHER] pthread_getschedparam");
     } else {
         int core = sched_getcpu();
-        printf("[OTHER] started  policy=%d (SCHED_OTHER=%d)  affinity_set=20  actual_core=%d\n",
+        printf("[T1] started  policy=%d (SCHED_OTHER=%d)  affinity=20  actual_core=%d\n",
                policy, SCHED_OTHER, core);
     }
 
@@ -143,7 +143,7 @@ static void *test_other_thread(void *arg)
         clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next_wake, NULL);
     }
 
-    printf("[OTHER] exiting\n");
+    printf("[T1] exiting\n");
     return NULL;
 }
 
@@ -183,7 +183,7 @@ int main(void)
     pthread_t t_fifo, t_other, t_reporter;
 
     printf("=== FIFO vs OTHER scheduling test ===\n");
-    printf("Both threads pinned to CPU 20\n");
+    printf("Both threads pinned to CPU 20 (T0=FIFO, T1=OTHER)\n");
     printf("FIFO:  SCHED_FIFO max priority, 100us sleep every 1000ms, compute rest\n");
     printf("OTHER: SCHED_OTHER, wakes every 1ms\n");
     printf("Watch OTHER_sched_count: ratio near 10%% => OTHER gets ~10%% CPU time;\n");
@@ -194,8 +194,8 @@ int main(void)
     pthread_create(&t_reporter, NULL, reporter_thread,    NULL);
 
     /* set thread names in main after pthread_create */
-    pthread_setname_np(t_fifo,  "TEST_FIFO");
-    pthread_setname_np(t_other, "TEST_OTHER");
+    pthread_setname_np(t_fifo,  "T0");
+    pthread_setname_np(t_other, "T1");
 
     /* run for 30 seconds */
     sleep(30);
