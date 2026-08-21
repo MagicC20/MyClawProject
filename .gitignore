@@ -17,3 +17,6 @@ Thumbs.db
 *.token
 *_token*
 credentials.json
+
+# Agent 长期记忆（本地使用，不提交）
+.agent-context.md
